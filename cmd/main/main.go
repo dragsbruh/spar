@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/dragsbruh/spar.git/internal/music"
@@ -37,6 +38,9 @@ func main() {
 	client := utils.PrepareClient(ctx)
 
 	for _, item := range list {
+		if strings.HasPrefix(item.Name, "#") {
+			continue
+		}
 		tracks := music.GetItemTracks(ctx, client, item, 250*time.Millisecond)
 		acquiredTracks = append(acquiredTracks, tracks...)
 
