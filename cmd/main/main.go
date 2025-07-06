@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -30,6 +31,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading list.csv: %v", err)
 	}
+	list = slices.DeleteFunc(list, func(E music.ListItem) bool {
+		return strings.HasPrefix(E.Name, "#")
+	})
 	log.Infof("Loaded %d items from list.csv", len(list))
 
 	acquiredTracks := []spotify.FullTrack{}
@@ -38,9 +42,6 @@ func main() {
 	client := utils.PrepareClient(ctx)
 
 	for _, item := range list {
-		if strings.HasPrefix(item.Name, "#") {
-			continue
-		}
 		tracks := music.GetItemTracks(ctx, client, item, 250*time.Millisecond)
 		acquiredTracks = append(acquiredTracks, tracks...)
 
