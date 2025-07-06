@@ -53,6 +53,9 @@ You must have `go` and `git` installed, and a Spotify Account (for the API).
 4. After creation, copy your client ID and client secret and save them in your `.env` (or environment) as `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`.
 5. Run `go build ./cmd/main/main.go`
 
+The first time you run `spar` it will prompt you to authenticate to Spotify via OAuth, and then save the token as `.spar-token` in the same directory.
+You will need to reauthenticate if that file is missing.
+
 ## Usage
 
 In the same directory as your `list.csv`
