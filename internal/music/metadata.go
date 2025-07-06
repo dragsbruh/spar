@@ -46,7 +46,7 @@ func GetItemTracks(ctx context.Context, client *spotify.Client, item ListItem, s
 
 		for {
 			time.Sleep(sleepDuration)
-			albums, err := client.GetArtistAlbums(ctx, spotify.ID(item.Id), []spotify.AlbumType{spotify.AlbumTypeAlbum}, spotify.Offset(len(acquiredAlbums)))
+			albums, err := client.GetArtistAlbums(ctx, spotify.ID(item.Id), []spotify.AlbumType{spotify.AlbumTypeAlbum, spotify.AlbumTypeSingle}, spotify.Offset(len(acquiredAlbums)))
 			if err != nil {
 				log.Warnf("Failed to get artist albums for `%s` (id: `%s`): %v", item.Name, item.Id, err)
 				continue // TODO: this too
