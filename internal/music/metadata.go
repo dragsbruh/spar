@@ -51,11 +51,11 @@ func GetItemTracks(ctx context.Context, client *spotify.Client, item ListItem, s
 				log.Warnf("Failed to get artist albums for `%s` (id: `%s`): %v", item.Name, item.Id, err)
 				continue // TODO: this too
 			}
+			log.Infof("Acquired %d albums for page of artist `%s` (id: `%s`, total acquired albums: %d)", len(albums.Albums), item.Name, item.Id, len(acquiredAlbums))
+			acquiredAlbums = append(acquiredAlbums, albums.Albums...)
 			if albums.Next == "" {
 				break
 			}
-			log.Infof("Acquired %d albums for page of artist `%s` (id: `%s`, total acquired albums: %d)", len(albums.Albums), item.Name, item.Id, len(acquiredAlbums))
-			acquiredAlbums = append(acquiredAlbums, albums.Albums...)
 		}
 
 		acquiredTracks := []spotify.FullTrack{}
