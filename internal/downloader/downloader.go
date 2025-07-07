@@ -54,7 +54,7 @@ func DownloadTracks(tracks []spotify.FullTrack, tempDir, outDir string, maxWorke
 func DownloadSingleTrack(track spotify.FullTrack, tempDir string, outDir string, logFile io.Writer) error {
 	rawAudioPath := filepath.Join(tempDir, fmt.Sprintf("raw_%s.opus", track.ID))
 	rawCoverPath := filepath.Join(tempDir, fmt.Sprintf("cover_%s.jpg", track.ID))
-	finalAudioPath := filepath.Join(outDir, fmt.Sprintf("%s - %s.mkv", slug.Make(track.Artists[0].Name), slug.Make(track.Name)))
+	finalAudioPath := filepath.Join(outDir, fmt.Sprintf("%s - %s.ogg", slug.Make(track.Artists[0].Name), slug.Make(track.Name)))
 
 	_, err := os.Stat(finalAudioPath)
 	if err == nil {

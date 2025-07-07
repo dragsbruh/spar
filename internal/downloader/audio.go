@@ -11,6 +11,8 @@ import (
 func DownloadOpusAudio(track spotify.FullTrack, output string, logFile io.Writer) error {
 	args := []string{
 		"-f", "bestaudio",
+		"--no-playlist",
+		"--no-mtime",
 		"--output", output,
 		fmt.Sprintf("ytsearch1:%s %s", track.Artists[0].Name, track.Name),
 	}
@@ -43,13 +45,13 @@ func AddMetadata(track spotify.FullTrack, rawAudioPath string, rawCoverPath stri
 		"-y",
 		"-i", rawAudioPath,
 		"-i", rawCoverPath,
-		"-map", "0:a",
-		"-map", "1",
-		"-b:a", "192k",
-		"-c:v", "copy",
-		"-metadata:s:v", "title=Album cover",
-		"-metadata:s:v", "comment=Cover (front)",
+		"-map", "0",
+		"-c", "copy",
+		"-metadata:s:v", `title=Album cover`,
+		"-metadata:s:v", `comment=Cover (front)`,
+		"-disposition:v", "attached_pic",
 	}
+
 	args = append(args, metadataArgs...)
 	args = append(args, outputPath)
 
