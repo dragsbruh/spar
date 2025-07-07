@@ -8,9 +8,12 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
-func DownloadOpusAudio(track spotify.FullTrack, output string, logFile io.Writer) error {
+func DownloadAudio(track spotify.FullTrack, output string, logFile io.Writer) error {
 	args := []string{
 		"-f", "bestaudio",
+		"--extract-audio",
+		"--audio-format", "mp3",
+		"--audio-quality", "0",
 		"--no-playlist",
 		"--no-mtime",
 		"--output", output,
@@ -45,10 +48,14 @@ func AddMetadata(track spotify.FullTrack, rawAudioPath string, rawCoverPath stri
 		"-y",
 		"-i", rawAudioPath,
 		"-i", rawCoverPath,
-		"-map", "0",
-		"-c", "copy",
-		"-metadata:s:v", `title=Album cover`,
-		"-metadata:s:v", `comment=Cover (front)`,
+		"-map", "0:a",
+		"-map", "1:v",
+		"-c:a", "libmp3lame",
+		"-q:a", "0",
+		"-c:v", "mjpeg",
+		"-id3v2_version", "3",
+		"-metadata:s:v", "title=Album cover",
+		"-metadata:s:v", "comment=Cover (front)",
 		"-disposition:v", "attached_pic",
 	}
 

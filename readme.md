@@ -17,7 +17,7 @@ You define the artists and stuff declaratively in `spar.yml` like this:
 
 ```yaml
 tempdir: ~/temp/music_cache/ # temporary place to store cover files, raw audio etc
-outdir: ~/Music/ # directory in which music is downloaded to as ogg
+outdir: ~/Music/ # directory in which music is downloaded to as mp3
 metapath: ~/Music/.meta.json # metadata json file (useful if you want to pause downloading and restart again, use with `-l` flag after you run it once)
 workers: 10 # number of concurrent downloads
 
@@ -91,4 +91,4 @@ or `--file` or `--lf` flags work too.
 **Flow:**
 
 1. Get tracks from Spotify API.
-2. Iterate through tracks and save covers to temp directory, get the raw opus audio from youtube and embed metadata with audio in an ogg container.
+2. Iterate through tracks and save covers to temp directory, get the audio from youtube and embed metadata.

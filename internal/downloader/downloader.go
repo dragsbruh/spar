@@ -53,9 +53,9 @@ func DownloadTracks(tracks []spotify.FullTrack, tempDir, outDir string, maxWorke
 }
 
 func DownloadSingleTrack(track spotify.FullTrack, tempDir string, outDir string, logFile io.Writer) error {
-	rawAudioPath := filepath.Join(tempDir, fmt.Sprintf("raw_%s.opus", track.ID))
+	rawAudioPath := filepath.Join(tempDir, fmt.Sprintf("raw_%s.mp3", track.ID))
 	rawCoverPath := filepath.Join(tempDir, fmt.Sprintf("cover_%s.jpg", track.ID))
-	finalAudioPath := filepath.Join(outDir, fmt.Sprintf("%s - %s.ogg", slug.Make(track.Artists[0].Name), slug.Make(track.Name)))
+	finalAudioPath := filepath.Join(outDir, fmt.Sprintf("%s - %s.mp3", slug.Make(track.Artists[0].Name), slug.Make(track.Name)))
 
 	_, err := os.Stat(finalAudioPath)
 	if err == nil {
@@ -76,8 +76,8 @@ func DownloadSingleTrack(track spotify.FullTrack, tempDir string, outDir string,
 		}
 	}
 
-	if err := DownloadOpusAudio(track, rawAudioPath, logFile); err != nil {
-		return fmt.Errorf("downloading opus audio for %s: %w", track.ID, err)
+	if err := DownloadAudio(track, rawAudioPath, logFile); err != nil {
+		return fmt.Errorf("downloading audio for %s: %w", track.ID, err)
 	}
 
 	if err := AddMetadata(track, rawAudioPath, rawCoverPath, finalAudioPath, logFile); err != nil {
