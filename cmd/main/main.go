@@ -2,60 +2,155 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"os"
-	"slices"
-	"strings"
 	"time"
 
-	"github.com/dragsbruh/spar.git/internal/music"
-	"github.com/dragsbruh/spar.git/internal/utils"
+	"github.com/dragsbruh/spar.git/internal/api"
+	"github.com/dragsbruh/spar.git/internal/downloader"
+	"github.com/dragsbruh/spar.git/internal/listfile"
+	"github.com/dragsbruh/spar.git/internal/misc"
+	"github.com/dragsbruh/spar.git/internal/server"
+	"github.com/dragsbruh/spar.git/internal/tokenutil"
 	"github.com/joho/godotenv"
-	"github.com/zmb3/spotify/v2"
-
 	log "github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v3"
+	"github.com/zmb3/spotify/v2"
+	spotifyauth "github.com/zmb3/spotify/v2/auth"
 )
 
 func main() {
 	ctx := context.Background()
 
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("error loading env: %v", err)
+	}
+
 	log.SetFormatter(&log.TextFormatter{})
-	log.SetOutput(os.Stdout)
 	log.SetLevel(log.DebugLevel)
 
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
+	var (
+		localOnly    bool
+		listfilePath string
+	)
+
+	cmd := cli.Command{
+		Name:  "spar",
+		Usage: "spotify archiver",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "verbose",
+				Aliases: []string{"v"},
+				Usage:   "sets log level to debug",
+			},
+		},
+		Commands: []*cli.Command{
+			{
+				Name:    "sync",
+				Usage:   "sync a spar.yml listfile",
+				Aliases: []string{"s"},
+
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:        "local",
+						Usage:       "does not interact with spotify api (uses metadata file)",
+						Aliases:     []string{"l"},
+						Value:       false,
+						Destination: &localOnly,
+					},
+					&cli.StringFlag{
+						Name:        "listfile",
+						Usage:       "listfile to use instead of spar.yml",
+						Aliases:     []string{"file", "lf"},
+						Value:       "spar.yml",
+						Destination: &listfilePath,
+					},
+				},
+
+				Action: func(ctx context.Context, c *cli.Command) error {
+					conf, err := listfile.Load(listfilePath)
+					if err != nil {
+						return fmt.Errorf("error loading listfile: %v", err)
+					}
+
+					var tracks []spotify.FullTrack
+					if !localOnly {
+						log.Infof("preparing client")
+						client, err := PrepareClient(ctx, 8080)
+						if err != nil {
+							return fmt.Errorf("error preparing client: %v", err)
+						}
+
+						for i, item := range conf.Items {
+							itemTracks, err := api.GetItem(ctx, client, item, 200*time.Millisecond)
+							if err != nil {
+								return fmt.Errorf("getting item: %w", err)
+							}
+							tracks = append(tracks, itemTracks...)
+							log.Infof("(%d/%d) got %d tracks (%d total) for `%s` (`%s`)", i+1, len(conf.Items), len(itemTracks), len(tracks), item.ID, item.Name)
+						}
+
+						log.Infof("saving tracks metadata to %s", conf.MetaPath)
+						if err := misc.SaveTracks(tracks, conf.MetaPath); err != nil {
+							return fmt.Errorf("saving tracks metadata: %w", err)
+						}
+					} else {
+						log.Infof("loading tracks metadata from %s", conf.MetaPath)
+						tracks, err = misc.LoadTracks(conf.MetaPath)
+						if err != nil {
+							return fmt.Errorf("loading tracks metadata: %w", err)
+						}
+					}
+
+					if err := downloader.DownloadTracks(tracks, conf.TempDirectory, conf.OutDirectory, conf.Workers); err != nil {
+						return fmt.Errorf("downloading tracks: %w", err)
+					}
+
+					return nil
+				},
+			},
+		},
 	}
 
-	list, err := music.GetLocalList("list.csv")
+	if err := cmd.Run(ctx, os.Args); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func PrepareClient(ctx context.Context, port int) (*spotify.Client, error) {
+	clientId := os.Getenv("SPOTIFY_CLIENT_ID")
+	clientSecret := os.Getenv("SPOTIFY_CLIENT_SECRET")
+
+	if clientId == "" {
+		return nil, fmt.Errorf("SPOTIFY_CLIENT_ID is not set")
+	}
+	if clientSecret == "" {
+		return nil, fmt.Errorf("SPOTIFY_CLIENT_SECRET is not set")
+	}
+
+	redirectUrl := fmt.Sprintf("http://127.0.0.1:%d/callback", port)
+
+	auth := spotifyauth.New(spotifyauth.WithClientID(clientId), spotifyauth.WithClientSecret(clientSecret), spotifyauth.WithRedirectURL(redirectUrl))
+
+	log.Infof("attempting to load token")
+	token, err := tokenutil.Load()
 	if err != nil {
-		log.Fatalf("Error loading list.csv: %v", err)
-	}
-	list = slices.DeleteFunc(list, func(E music.ListItem) bool {
-		return strings.HasPrefix(E.Name, "#")
-	})
-	log.Infof("Loaded %d items from list.csv", len(list))
-
-	acquiredTracks := []spotify.FullTrack{}
-
-	log.Info("Preparing client")
-	client := utils.PrepareClient(ctx)
-
-	for _, item := range list {
-		tracks := music.GetItemTracks(ctx, client, item, 250*time.Millisecond)
-		acquiredTracks = append(acquiredTracks, tracks...)
-
-		log.Infof("Acquired %d tracks for item `%s` (id: `%s`, total acquired: %d)", len(tracks), item.Name, item.Id, len(acquiredTracks))
+		return nil, fmt.Errorf("loading token: %w", err)
 	}
 
-	data, err := json.MarshalIndent(acquiredTracks, "", "  ")
-	if err != nil {
-		log.Fatalf("Error marshalling JSON: %v", err)
+	if token == nil || !token.Valid() {
+		log.Warnf("token non-existent/invalid, reauthenticating")
+		token, err = server.StartWaitForToken(auth, port)
+		if err != nil {
+			return nil, fmt.Errorf("token server: %w", err)
+		}
+
+		log.Infof("saving token")
+		if err := tokenutil.Save(token); err != nil {
+			return nil, fmt.Errorf("saving token: %w", err)
+		}
 	}
 
-	if err := os.WriteFile("data.json", data, os.ModePerm); err != nil {
-		log.Fatalf("Error writing JSON: %v", err)
-	}
-
-	log.Infof("Completed and saved to data.json")
+	log.Infof("creating client")
+	return spotify.New(auth.Client(ctx, token)), nil
 }

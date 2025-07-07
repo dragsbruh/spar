@@ -1,0 +1,80 @@
+package downloader
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/gosimple/slug"
+	log "github.com/sirupsen/logrus"
+	"github.com/zmb3/spotify/v2"
+)
+
+func DownloadTracks(tracks []spotify.FullTrack, tempDir, outDir string, maxWorkers int) error {
+	type result struct {
+		index int
+		err   error
+	}
+
+	jobs := make(chan int, len(tracks))
+	results := make(chan result, len(tracks))
+
+	for range maxWorkers {
+		go func() {
+			for i := range jobs {
+				err := DownloadSingleTrack(tracks[i], tempDir, outDir)
+				results <- result{i, err}
+			}
+		}()
+	}
+
+	for i := range tracks {
+		jobs <- i
+	}
+	close(jobs)
+
+	for range tracks {
+		res := <-results
+		if res.err != nil {
+			return fmt.Errorf("failed at (%d/%d): %w", res.index+1, len(tracks), res.err)
+		}
+		log.Infof("(%d/%d) downloaded audio for `%s` (`%s`)", res.index+1, len(tracks), tracks[res.index].ID, tracks[res.index].Name)
+	}
+
+	return nil
+}
+
+func DownloadSingleTrack(track spotify.FullTrack, tempDir string, outDir string) error {
+	rawAudioPath := filepath.Join(tempDir, fmt.Sprintf("raw_%s.opus", track.ID))
+	rawCoverPath := filepath.Join(tempDir, fmt.Sprintf("cover_%s.jpg", track.ID))
+	finalAudioPath := filepath.Join(outDir, fmt.Sprintf("%s - %s.mkv", slug.Make(track.Artists[0].Name), slug.Make(track.Name)))
+
+	_, err := os.Stat(finalAudioPath)
+	if err == nil {
+		return nil
+	}
+
+	hasCover := len(track.Album.Images) > 0
+
+	if hasCover {
+		file, err := os.Create(rawCoverPath)
+		if err != nil {
+			return fmt.Errorf("opening cover path for %s: %w", track.ID, err)
+		}
+		defer file.Close()
+
+		if err := track.Album.Images[0].Download(file); err != nil {
+			return fmt.Errorf("downloading cover for %s: %w", track.ID, err)
+		}
+	}
+
+	if err := DownloadOpusAudio(track, rawAudioPath); err != nil {
+		return fmt.Errorf("downloading opus audio for %s: %w", track.ID, err)
+	}
+
+	if err := AddMetadata(track, rawAudioPath, rawCoverPath, finalAudioPath); err != nil {
+		return fmt.Errorf("adding metadata for %s: %w", track.ID, err)
+	}
+
+	return nil
+}
