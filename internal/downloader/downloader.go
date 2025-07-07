@@ -43,9 +43,10 @@ func DownloadTracks(tracks []spotify.FullTrack, tempDir, outDir string, maxWorke
 	for range tracks {
 		res := <-results
 		if res.err != nil {
-			return fmt.Errorf("failed at (%d/%d): %w", res.index+1, len(tracks), res.err)
+			log.Errorf("(%d/%d) failed to download `%s`: %v", res.index+1, len(tracks), tracks[res.index].Name, res.err)
+		} else {
+			log.Infof("(%d/%d) downloaded audio for `%s` (`%s`)", res.index+1, len(tracks), tracks[res.index].ID, tracks[res.index].Name)
 		}
-		log.Infof("(%d/%d) downloaded audio for `%s` (`%s`)", res.index+1, len(tracks), tracks[res.index].ID, tracks[res.index].Name)
 	}
 
 	return nil
