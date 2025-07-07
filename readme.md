@@ -1,6 +1,6 @@
 # Spar
 
-> **NOTE:** not functional yet, only gets full metadata as of now.
+> **NOTE:** this should be functional but is still in development
 
 Spar stands for **Sp**otify **Ar**chiver.
 Written in golang, its supposed to be archiving playlists/tracks/artists.
@@ -11,41 +11,33 @@ I suck at error handling, beware of errors, Although they should be rare.
 
 ## How it works
 
-You define the artists and stuff in `list.csv` like this:
+You define the artists and stuff declaratively in `spar.yml` like this:
 
 **Format:**
 
-```csv
-Name,Type,ID
+```yaml
+tempdir: ~/temp/music_cache/ # temporary place to store cover files, raw audio etc
+outdir: ~/Music/ # directory in which music is downloaded to as mkv
+metapath: ~/Music/.meta.json # metadata json file (useful if you want to pause downloading and restart again, use with `-l` flag after you run it once)
+workers: 10 # number of concurrent downloads
+
+items:
+  - name: My fav artist # artist name, not used internally but displayed
+    kind: artist # available: artist/playlist/track
+    id: <artist_id> # just the id, ex: `2r3DAIz6afSzxVnM1Rzj3N`
+
+  - name: My Playlist
+    kind: playlist
+    id: <playlist_id>  # note that curated playlists and stuff might not work
 ```
-
-**Fields:**
-
-1. **Name:** Friendly name, not used internally
-2. **Type:** Type of item, can be `playlist`, `track` or `artist` (case insensitive)
-3. **ID:** Spotify ID of item, can be found at the end of path of URL of playlist/track/artist
-
-**Example:**
-
-```csv
-HOYO-MiX,artist,2YvlK6lKiKVjXxsjvNbnqg
-SawanoHiroyuki,artist,0Riv2KnFcLZA3JSVryRg4y
-SawanoHiroyuki [nZk],artist,2EWXgN0xWOnbqJOxa9pWNO
-Krage,artist,35jRIUtWCUITFLfjhYwkFx
-My Beloved,playlist,6PQh5zfIng0G3bDkHmvjK7
-```
-
-Please do not use comments I did not implement that.
 
 ### Downloading
 
-Similar to spotdl, it 
-
-It downloads tracks parallely using yt-dlp
+It downloads tracks parallely using yt-dlp by searching for the closest match to the spotify track.
 
 ## Installation
 
-You must have `go` and `git` installed, and a Spotify Account (for the API).
+You must have `go` installed, and a Spotify Account (for the API).
 
 1. Clone this repository.
 2. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and create a new app.
@@ -53,26 +45,43 @@ You must have `go` and `git` installed, and a Spotify Account (for the API).
 4. After creation, copy your client ID and client secret and save them in your `.env` (or environment) as `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`.
 5. Run `go build ./cmd/main/main.go`
 
-The first time you run `spar` it will prompt you to authenticate to Spotify via OAuth, and then save the token as `.spar-token` in the same directory.
-You will need to reauthenticate if that file is missing.
+The first time you run `spar` it will prompt you to authenticate to Spotify via OAuth, and then save the token as `.spar-token` in your user `.config/spar` directory.
+You will need to reauthenticate if that file is missing or token expired.
 
 ## Usage
 
-In the same directory as your `list.csv`
+In the same directory as your `spar.yml`
 
 ```bash
-spar
+spar sync
 ```
 
 Thats it
 
-**NOTE:** Actual UX, Configuration is To-Do
+**Continuing downloads:**
+
+In most cases, you can just ctrl+c if you want to go somewhere.
+When you are back, just hit
+
+```bash
+spar sync --local
+```
+
+This will load the tracks from your local metadata json instead of hitting the Spotify API again.
+
+**Using custom listfile:**
+
+```bash
+spar sync --listfile=mylist.yaml
+```
+
+or `--file` or `--lf` flags work too.
 
 ## TO-DO
 
 *(In order of priority)*
 
-- [ ] Download the actual music (to a folder with the track id as filename)
+- [x] Download the actual music (to a folder with the track id as filename)
 - [ ] CLI config for music format, list file, rate limit handling, etc
 - [ ] Make it feel like a legit app by using better logs
 - [ ] Use as a standlone app (directly specify)
