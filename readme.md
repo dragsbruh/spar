@@ -81,7 +81,7 @@ or `--file` or `--lf` flags work too.
 
 *(In order of priority)*
 
-- [x] Download the actual music (to a folder with the track id as filename)
+- [x] Download the actual music (to a folder with the sluggified artist-title as filename)
 - [ ] CLI config for music format, list file, rate limit handling, etc
 - [ ] Make it feel like a legit app by using better logs
 - [ ] Use as a standlone app (directly specify)
@@ -91,4 +91,4 @@ or `--file` or `--lf` flags work too.
 **Flow:**
 
 1. Get tracks from Spotify API.
-2. Iterate through tracks and save covers to temp directory, get the raw opus audio from youtube and embed metadata with audio in a webm container.
+2. Iterate through tracks and save covers to temp directory, get the raw opus audio from youtube and embed metadata with audio in an mkv container.
