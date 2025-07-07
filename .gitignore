@@ -1,5 +1,5 @@
-list.csv
-data.json
+tmp
+spar.yml
 
 .env
 .spar_token

@@ -76,3 +76,10 @@ Thats it
 - [ ] CLI config for music format, list file, rate limit handling, etc
 - [ ] Make it feel like a legit app by using better logs
 - [ ] Use as a standlone app (directly specify)
+
+## Docs
+
+**Flow:**
+
+1. Get tracks from Spotify API.
+2. Iterate through tracks and save covers to temp directory, get the raw opus audio from youtube and embed metadata with audio in a webm container.
