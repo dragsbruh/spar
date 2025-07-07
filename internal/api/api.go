@@ -15,6 +15,8 @@ func GetItem(ctx context.Context, client *spotify.Client, item listfile.Listfile
 		return GetArtist(ctx, client, item.Name, item.ID, sleepDuration)
 	case "playlist":
 		return GetPlaylist(ctx, client, item.Name, item.ID, sleepDuration)
+	case "track":
+		return GetTrack(ctx, client, item.Name, item.ID, sleepDuration)
 	default:
 	}
 
