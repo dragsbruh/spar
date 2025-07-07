@@ -2,12 +2,13 @@ package downloader
 
 import (
 	"fmt"
+	"io"
 	"os/exec"
 
 	"github.com/zmb3/spotify/v2"
 )
 
-func DownloadOpusAudio(track spotify.FullTrack, output string) error {
+func DownloadOpusAudio(track spotify.FullTrack, output string, logFile io.Writer) error {
 	args := []string{
 		"-f", "bestaudio",
 		"--extract-audio",
@@ -17,6 +18,8 @@ func DownloadOpusAudio(track spotify.FullTrack, output string) error {
 	}
 
 	cmd := exec.Command("yt-dlp", args...)
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("yt-dlp error: %w", err)
 	}
@@ -24,7 +27,7 @@ func DownloadOpusAudio(track spotify.FullTrack, output string) error {
 	return nil
 }
 
-func AddMetadata(track spotify.FullTrack, rawAudioPath string, rawCoverPath string, outputPath string) error {
+func AddMetadata(track spotify.FullTrack, rawAudioPath string, rawCoverPath string, outputPath string, logFile io.Writer) error {
 	metadataArgs := []string{
 		"-metadata", fmt.Sprintf("title=%s", track.Name),
 		"-metadata", fmt.Sprintf("artist=%s", track.Artists[0].Name),
@@ -54,6 +57,8 @@ func AddMetadata(track spotify.FullTrack, rawAudioPath string, rawCoverPath stri
 	args = append(args, outputPath)
 
 	cmd := exec.Command("ffmpeg", args...)
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("ffmpeg error: %w", err)
 	}

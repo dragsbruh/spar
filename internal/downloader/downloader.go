@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -11,6 +12,12 @@ import (
 )
 
 func DownloadTracks(tracks []spotify.FullTrack, tempDir, outDir string, maxWorkers int) error {
+	logFile, err := os.Create(filepath.Join(tempDir, ".spar.thirdparty.log"))
+	if err != nil {
+		return fmt.Errorf("creating log file: %w", err)
+	}
+	defer logFile.Close()
+
 	type result struct {
 		index int
 		err   error
@@ -22,7 +29,7 @@ func DownloadTracks(tracks []spotify.FullTrack, tempDir, outDir string, maxWorke
 	for range maxWorkers {
 		go func() {
 			for i := range jobs {
-				err := DownloadSingleTrack(tracks[i], tempDir, outDir)
+				err := DownloadSingleTrack(tracks[i], tempDir, outDir, logFile)
 				results <- result{i, err}
 			}
 		}()
@@ -44,7 +51,7 @@ func DownloadTracks(tracks []spotify.FullTrack, tempDir, outDir string, maxWorke
 	return nil
 }
 
-func DownloadSingleTrack(track spotify.FullTrack, tempDir string, outDir string) error {
+func DownloadSingleTrack(track spotify.FullTrack, tempDir string, outDir string, logFile io.Writer) error {
 	rawAudioPath := filepath.Join(tempDir, fmt.Sprintf("raw_%s.opus", track.ID))
 	rawCoverPath := filepath.Join(tempDir, fmt.Sprintf("cover_%s.jpg", track.ID))
 	finalAudioPath := filepath.Join(outDir, fmt.Sprintf("%s - %s.mkv", slug.Make(track.Artists[0].Name), slug.Make(track.Name)))
@@ -68,11 +75,11 @@ func DownloadSingleTrack(track spotify.FullTrack, tempDir string, outDir string)
 		}
 	}
 
-	if err := DownloadOpusAudio(track, rawAudioPath); err != nil {
+	if err := DownloadOpusAudio(track, rawAudioPath, logFile); err != nil {
 		return fmt.Errorf("downloading opus audio for %s: %w", track.ID, err)
 	}
 
-	if err := AddMetadata(track, rawAudioPath, rawCoverPath, finalAudioPath); err != nil {
+	if err := AddMetadata(track, rawAudioPath, rawCoverPath, finalAudioPath, logFile); err != nil {
 		return fmt.Errorf("adding metadata for %s: %w", track.ID, err)
 	}
 
