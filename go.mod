@@ -1,4 +1,4 @@
-module github.com/dragsbruh/spar.git
+module github.com/dragsbruh/spar
 
 go 1.24.4
 

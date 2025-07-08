@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dragsbruh/spar.git/internal/listfile"
+	"github.com/dragsbruh/spar/internal/listfile"
 	"github.com/zmb3/spotify/v2"
 )
 

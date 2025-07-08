@@ -6,12 +6,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/dragsbruh/spar.git/internal/api"
-	"github.com/dragsbruh/spar.git/internal/downloader"
-	"github.com/dragsbruh/spar.git/internal/listfile"
-	"github.com/dragsbruh/spar.git/internal/misc"
-	"github.com/dragsbruh/spar.git/internal/server"
-	"github.com/dragsbruh/spar.git/internal/tokenutil"
+	"github.com/dragsbruh/spar/internal/api"
+	"github.com/dragsbruh/spar/internal/downloader"
+	"github.com/dragsbruh/spar/internal/listfile"
+	"github.com/dragsbruh/spar/internal/misc"
+	"github.com/dragsbruh/spar/internal/server"
+	"github.com/dragsbruh/spar/internal/tokenutil"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v3"
@@ -75,12 +75,13 @@ func main() {
 
 					var tracks []spotify.FullTrack
 					if !localOnly {
-						log.Infof("preparing client")
+						log.Infof("preparing spotify api client")
 						client, err := PrepareClient(ctx, 8080)
 						if err != nil {
 							return fmt.Errorf("error preparing client: %v", err)
 						}
 
+						log.Info("indexing items from api")
 						for i, item := range conf.Items {
 							itemTracks, err := api.GetItem(ctx, client, item, 200*time.Millisecond)
 							if err != nil {
@@ -102,6 +103,7 @@ func main() {
 						}
 					}
 
+					log.Info("downloading tracks")
 					if err := downloader.DownloadTracks(tracks, conf.TempDirectory, conf.OutDirectory, conf.Workers); err != nil {
 						return fmt.Errorf("downloading tracks: %w", err)
 					}

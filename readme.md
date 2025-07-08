@@ -1,6 +1,8 @@
 # Spar
 
-> **NOTE:** this should be functional but is still in development
+> **NOTE:** this should be atleast functional but is still in development. as of now, we do not embed metadata yet,
+> we just download the opus audio to a temp directory with cover and metadata as separate files.
+> we still need to transcode it to vorbis and use an ogg container to add metadata and cover art.
 
 Spar stands for **Sp**otify **Ar**chiver.
 Written in golang, its supposed to be archiving playlists/tracks/artists.
@@ -17,7 +19,7 @@ You define the artists and stuff declaratively in `spar.yml` like this:
 
 ```yaml
 tempdir: ~/temp/music_cache/ # temporary place to store cover files, raw audio etc
-outdir: ~/Music/ # directory in which music is downloaded to as mp3
+outdir: ~/Music/ # directory in which music is downloaded to as vorbis ogg
 metapath: ~/Music/.meta.json # metadata json file (useful if you want to pause downloading and restart again, use with `-l` flag after you run it once)
 workers: 10 # number of concurrent downloads
 

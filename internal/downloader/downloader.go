@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gosimple/slug"
+	"github.com/dragsbruh/spar/internal/misc"
 	log "github.com/sirupsen/logrus"
 	"github.com/zmb3/spotify/v2"
 )
@@ -53,35 +53,58 @@ func DownloadTracks(tracks []spotify.FullTrack, tempDir, outDir string, maxWorke
 }
 
 func DownloadSingleTrack(track spotify.FullTrack, tempDir string, outDir string, logFile io.Writer) error {
-	rawAudioPath := filepath.Join(tempDir, fmt.Sprintf("raw_%s.mp3", track.ID))
-	rawCoverPath := filepath.Join(tempDir, fmt.Sprintf("cover_%s.jpg", track.ID))
-	finalAudioPath := filepath.Join(outDir, fmt.Sprintf("%s - %s.mp3", slug.Make(track.Artists[0].Name), slug.Make(track.Name)))
+	audioFilePathWithoutExt := filepath.Join(tempDir, fmt.Sprintf("audio_%s", track.ID))
+	rawMetadataPath := filepath.Join(tempDir, fmt.Sprintf("meta_%s.json", track.ID))
+	symlinkCoverPath := filepath.Join(tempDir, fmt.Sprintf("cover_%s.jpg", track.ID))
+	albumCoverPath := filepath.Join(tempDir, fmt.Sprintf("acover_%s.jpg", track.Album.ID))
 
-	_, err := os.Stat(finalAudioPath)
-	if err == nil {
-		return nil
+	rawAudioPath, err := misc.GetAudioFiles(audioFilePathWithoutExt)
+	if err != nil {
+		return fmt.Errorf("getting audio files: %w", err)
 	}
+
+	audioExists := rawAudioPath != ""
+
+	_, err = os.Stat(symlinkCoverPath)
+	coverExists := err == nil
+
+	_, err = os.Stat(rawMetadataPath)
+	metaExists := err == nil
+
+	_, err = os.Stat(albumCoverPath)
+	albumCoverExists := err == nil
 
 	hasCover := len(track.Album.Images) > 0
 
 	if hasCover {
-		file, err := os.Create(rawCoverPath)
-		if err != nil {
-			return fmt.Errorf("opening cover path for %s: %w", track.ID, err)
-		}
-		defer file.Close()
+		if !albumCoverExists {
+			file, err := os.Create(albumCoverPath)
+			if err != nil {
+				return fmt.Errorf("opening cover path for %s: %w", track.Album.ID, err)
+			}
+			defer file.Close()
 
-		if err := track.Album.Images[0].Download(file); err != nil {
-			return fmt.Errorf("downloading cover for %s: %w", track.ID, err)
+			if err := track.Album.Images[0].Download(file); err != nil {
+				return fmt.Errorf("downloading cover for %s: %w", track.ID, err)
+			}
+		}
+		if !coverExists {
+			if err := os.Symlink(albumCoverPath, symlinkCoverPath); err != nil {
+				return fmt.Errorf("creating symlink cover for %s: %w", track.ID, err)
+			}
 		}
 	}
 
-	if err := DownloadAudio(track, rawAudioPath, logFile); err != nil {
-		return fmt.Errorf("downloading audio for %s: %w", track.ID, err)
+	if !audioExists {
+		if err := DownloadAudio(track, fmt.Sprintf("%s.%%(ext)s", audioFilePathWithoutExt), logFile); err != nil {
+			return fmt.Errorf("downloading audio for %s: %w", track.ID, err)
+		}
 	}
 
-	if err := AddMetadata(track, rawAudioPath, rawCoverPath, finalAudioPath, logFile); err != nil {
-		return fmt.Errorf("adding metadata for %s: %w", track.ID, err)
+	if !metaExists {
+		if err := SaveMetadata(track, rawMetadataPath); err != nil {
+			return fmt.Errorf("adding metadata for %s: %w", track.ID, err)
+		}
 	}
 
 	return nil

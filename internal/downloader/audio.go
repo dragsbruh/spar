@@ -1,8 +1,10 @@
 package downloader
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 
 	"github.com/zmb3/spotify/v2"
@@ -11,9 +13,6 @@ import (
 func DownloadAudio(track spotify.FullTrack, output string, logFile io.Writer) error {
 	args := []string{
 		"-f", "bestaudio",
-		"--extract-audio",
-		"--audio-format", "mp3",
-		"--audio-quality", "0",
 		"--no-playlist",
 		"--no-mtime",
 		"--output", output,
@@ -30,43 +29,22 @@ func DownloadAudio(track spotify.FullTrack, output string, logFile io.Writer) er
 	return nil
 }
 
-func AddMetadata(track spotify.FullTrack, rawAudioPath string, rawCoverPath string, outputPath string, logFile io.Writer) error {
-	metadataArgs := []string{
-		"-metadata", fmt.Sprintf("title=%s", track.Name),
-		"-metadata", fmt.Sprintf("artist=%s", track.Artists[0].Name),
-		"-metadata", fmt.Sprintf("album=%s", track.Album.Name),
-		"-metadata", fmt.Sprintf("date=%s", track.Album.ReleaseDate),
-		"-metadata", fmt.Sprintf("track=%d", track.TrackNumber),
-	}
-	if len(track.Album.Artists) > 0 {
-		metadataArgs = append(metadataArgs,
-			"-metadata", fmt.Sprintf("album_artist=%s", track.Album.Artists[0].Name),
-		)
+func SaveMetadata(track spotify.FullTrack, metadataPath string) error {
+	metadata := map[string]string{
+		"title":  track.Name,
+		"artist": track.Artists[0].Name,
+		"album":  track.Album.Name,
+		"date":   track.Album.ReleaseDate,
+		"track":  fmt.Sprintf("%d", track.TrackNumber),
 	}
 
-	args := []string{
-		"-y",
-		"-i", rawAudioPath,
-		"-i", rawCoverPath,
-		"-map", "0:a",
-		"-map", "1:v",
-		"-c:a", "libmp3lame",
-		"-q:a", "0",
-		"-c:v", "mjpeg",
-		"-id3v2_version", "3",
-		"-metadata:s:v", "title=Album cover",
-		"-metadata:s:v", "comment=Cover (front)",
-		"-disposition:v", "attached_pic",
+	bytes, err := json.Marshal(metadata)
+	if err != nil {
+		return fmt.Errorf("marshalling json: %w", err)
 	}
 
-	args = append(args, metadataArgs...)
-	args = append(args, outputPath)
-
-	cmd := exec.Command("ffmpeg", args...)
-	cmd.Stdout = logFile
-	cmd.Stderr = logFile
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("ffmpeg error: %w", err)
+	if err := os.WriteFile(metadataPath, bytes, os.ModePerm); err != nil {
+		return fmt.Errorf("writing file %s: %w", metadataPath, err)
 	}
 
 	return nil
